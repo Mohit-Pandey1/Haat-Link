@@ -1,92 +1,106 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  ArrowRight,
+  BadgeIndianRupee,
+  Check,
+  CircleDollarSign,
+  FileCheck2,
+  PackageCheck,
+  Sprout,
+  TrendingUp,
+  Truck,
+} from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useApp } from '../../context/AppContext';
 import { getDashboardStats } from '../../services/dashboardService';
 import { getMarketByCrop } from '../../services/marketService';
 import { PageTitle } from '../../components/common/PageTitle';
-import { StatCard } from '../../components/common/StatCard';
-import { PriceChart } from '../../components/common/PriceChart';
 import { money } from '../../utils/format';
 
-/**
- * PRICE CHART EXCEPTION:
- * The 7-day price history arrays below are intentionally hard-coded illustrative
- * data. They are isolated here so they can be connected to a real historical
- * price API in the future without touching anything else.
- */
-const CHART_HISTORY = {
-  Onion: [
-    ['Monday', 2280],
-    ['Tuesday', 2320],
-    ['Wednesday', 2350],
-    ['Thursday', 2410],
-    ['Friday', 2420],
-    ['Saturday', 2450],
-    ['Sunday', 2480],
-  ],
-};
+const CHART_HISTORY = [
+  { day: 'Mon', price: 2280 },
+  { day: 'Tue', price: 2320 },
+  { day: 'Wed', price: 2350 },
+  { day: 'Thu', price: 2410 },
+  { day: 'Fri', price: 2420 },
+  { day: 'Sat', price: 2450 },
+  { day: 'Sun', price: 2480 },
+];
+
+const activeStatuses = ['Deal Created', 'Pickup Scheduled', 'In Transit'];
+
+function DashboardStat({ icon: Icon, tone, label, value, detail, badge }) {
+  return (
+    <article className="dashboard-stat-card">
+      <div className={`dashboard-stat-icon ${tone}`}>
+        {React.createElement(Icon, { size: 19 })}
+      </div>
+      <div className="dashboard-stat-copy">
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{detail}</small>
+      </div>
+      {badge && (
+        <em className={`dashboard-stat-badge ${badge.tone || ''}`}>
+          {badge.label}
+        </em>
+      )}
+    </article>
+  );
+}
 
 export function DashboardPage() {
-  const { farmer, crops, cropsLoading } = useApp();
-  const n = useNavigate();
-
+  const { farmer, crops, cropsLoading, deals } = useApp();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
-
   const [onionMarket, setOnionMarket] = useState(null);
   const [marketLoading, setMarketLoading] = useState(true);
-
-  // Featured crop for the dashboard card — prefer Onion, fallback to first
-  const featuredCrop = crops.find((c) => c.name === 'Onion') || crops[0];
+  const [chartRange, setChartRange] = useState('7 Days');
 
   useEffect(() => {
-    async function load() {
-      setStatsLoading(true);
-      setStatsError(null);
-      try {
-        const data = await getDashboardStats();
-        setStats(data);
-      } catch (err) {
-        setStatsError(err.message);
-      } finally {
-        setStatsLoading(false);
-      }
-    }
-    load();
+    getDashboardStats()
+      .then(setStats)
+      .catch((error) => setStatsError(error.message))
+      .finally(() => setStatsLoading(false));
   }, []);
 
   useEffect(() => {
-    async function loadMarket() {
-      setMarketLoading(true);
-      try {
-        const data = await getMarketByCrop('Onion');
-        setOnionMarket(data);
-      } catch {
-        setOnionMarket(null);
-      } finally {
-        setMarketLoading(false);
-      }
-    }
-    loadMarket();
+    getMarketByCrop('Onion')
+      .then(setOnionMarket)
+      .catch(() => setOnionMarket(null))
+      .finally(() => setMarketLoading(false));
   }, []);
 
-  const today = new Date()
-    .toLocaleDateString('en-IN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    })
-    .toUpperCase();
+  const featuredCrop = crops.find((crop) => crop.name === 'Onion') || crops[0];
+  const activeDeal = deals.find((deal) => activeStatuses.includes(deal.status));
+  const bestMarket = onionMarket?.markets?.reduce(
+    (best, market) => (!best || market.price > best.price ? market : best),
+    null
+  );
+  const chartData = useMemo(() => CHART_HISTORY, []);
+  const firstName = farmer.name.split(' ')[0];
+  const totalQuantity =
+    stats?.totalQuantity ||
+    crops.reduce((sum, crop) => sum + (crop.quantity || 0), 0);
+  const cropCount = stats?.cropCount ?? crops.length;
+  const activeDealCount = stats?.activeDeals ?? stats?.dealCount ?? 0;
 
   if (statsLoading || cropsLoading) {
     return (
       <>
-        <PageTitle
-          kicker={today}
-          title={`Good morning, ${farmer.name.split(' ')[0]} 👋`}
-        />
-        <p className="intro">Loading dashboard…</p>
+        <PageTitle title={`Good morning, ${firstName}`} />
+        <p className="intro">Loading your mandi desk…</p>
       </>
     );
   }
@@ -94,193 +108,337 @@ export function DashboardPage() {
   if (statsError) {
     return (
       <>
-        <PageTitle kicker={today} title="Dashboard" />
-        <p className="intro" style={{ color: 'var(--danger, #e53e3e)' }}>
-          Failed to load dashboard: {statsError}
+        <PageTitle title="Dashboard" />
+        <p className="intro dashboard-error">
+          Could not load your mandi desk: {statsError}
         </p>
       </>
     );
   }
 
-  const notifications = stats?.notifications ?? [];
-
-  // Best buyer price from Onion market data
-  const bestPrice = onionMarket
-    ? Math.max(...(onionMarket.markets?.map((m) => m.price) ?? [0]))
-    : null;
-
   return (
-    <>
-      <PageTitle
-        kicker={today}
-        title={`Good morning, ${farmer.name.split(' ')[0]} 👋`}
-        action={
-          <button className="secondary" onClick={() => n('/crops')}>
-            View my crops
-          </button>
-        }
-      />
-      <p className="intro">
-        Here&apos;s how your harvest is positioned in the market today.
-      </p>
-      <section className="stats">
-        <StatCard
-          icon="🌱"
-          label="Total crops"
-          value={stats.cropCount}
-          detail={`${stats.totalQuantity} quintals in total`}
+    <div className="dashboard-home">
+      <section className="dashboard-welcome-row">
+        <div>
+          <p className="dashboard-date">
+            {new Date().toLocaleDateString('en-IN', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
+          </p>
+          <h1>
+            Good morning, {firstName} <span aria-hidden="true">👋</span>
+          </h1>
+          <p>
+            Here&apos;s how your harvest is positioned across Maharashtra mandis
+            today.
+          </p>
+        </div>
+        <button
+          className="dashboard-crops-cta"
+          type="button"
+          onClick={() => navigate('/crops')}
+        >
+          <Sprout size={17} /> View My Crops
+        </button>
+      </section>
+
+      <section className="dashboard-kpi-grid" aria-label="Farm overview">
+        <DashboardStat
+          icon={Sprout}
+          tone="gold"
+          label="Total Crops"
+          value={cropCount}
+          detail={`${totalQuantity} quintals ready`}
+          badge={{ label: `${Math.min(cropCount, 3)} GI Tagged`, tone: 'gold' }}
         />
-        <StatCard
-          icon="▣"
-          label="Best available price"
-          value={bestPrice ? `${money(bestPrice)}/q` : '—'}
+        <DashboardStat
+          icon={TrendingUp}
+          tone="green"
+          label="Best Available Price"
+          value={bestMarket ? `${money(bestMarket.price)} / qtl` : '—'}
+          detail={`${bestMarket?.name || 'Nearby APMC'} • Onion Grade A`}
+          badge={{
+            label: onionMarket?.change
+              ? `+${onionMarket.change}% ↗`
+              : 'Market watch',
+            tone: 'green',
+          }}
+        />
+        <DashboardStat
+          icon={Truck}
+          tone="purple"
+          label="Active Deals"
+          value={`${activeDealCount} Deal${activeDealCount === 1 ? '' : 's'} Active`}
           detail={
-            onionMarket
-              ? `${onionMarket.markets?.[onionMarket.markets.length - 1]?.name ?? ''} · Onion`
-              : 'Loading…'
+            activeDeal
+              ? `Pickup scheduled by ${activeDeal.buyer}`
+              : 'No pickup scheduled'
           }
+          badge={{ label: activeDeal?.status || 'Watching', tone: 'purple' }}
         />
-        <StatCard
-          icon="⌘"
-          label="Active deals"
-          value={stats.dealCount}
-          detail="Pickup scheduled"
-        />
-        <StatCard
-          icon="₹"
-          label="Pending payment"
+        <DashboardStat
+          icon={CircleDollarSign}
+          tone="amber"
+          label="Pending Payment"
           value="₹72,000"
-          detail="Expected in 3 days"
+          detail="Direct Escrow Payout"
+          badge={{ label: 'Expected in 3 days', tone: 'amber' }}
         />
       </section>
-      <section className="grid">
-        <div className="stack">
-          <article className="card rec">
-            <div className="card-title">
+
+      <section className="dashboard-main-grid">
+        <div className="dashboard-primary-column">
+          <article className="advisor-card">
+            <div className="advisor-topline">
+              <span className="advisor-engine">
+                <span>✦</span> AI Mandi Advisor
+              </span>
+              <span className="advisor-match">
+                <Check size={13} /> 94% Match Rate
+              </span>
+            </div>
+            <div className="advisor-heading">
               <div>
-                <small>SMART SELLING RECOMMENDATION</small>
+                <p>Best route for this harvest</p>
                 <h2>
-                  Sell {featuredCrop ? featuredCrop.name : 'your crop'} to ABC
-                  Foods
+                  Sell {featuredCrop?.name || 'Onion'} (Grade A) to{' '}
+                  {activeDeal?.buyer || 'ABC Foods'}
                 </h2>
               </div>
-              <b>94% Match</b>
+              <BadgeIndianRupee size={34} />
             </div>
-            <div className="rec-data">
-              <div>
-                <small>RECOMMENDATION</small>
+            <div className="advisor-insights">
+              <div className="advisor-highlight">
+                <span>Recommendation</span>
                 <strong>SELL NOW</strong>
-                <em>Strong market signals today</em>
+                <p>
+                  Nashik supply is peaking soon; the current price window is
+                  healthy.
+                </p>
               </div>
-              <aside>
-                <small>EXPECTED NET REALIZATION</small>
+              <div className="advisor-profit">
+                <span>Net realization</span>
                 <strong>
-                  ₹2,520<i> / quintal</i>
+                  {money(activeDeal?.net || 2520)} <small>/ qtl</small>
                 </strong>
-                <p>Listed price: ₹2,700/q</p>
-              </aside>
+                <p>
+                  Gross: {money(activeDeal?.price || 2700)} <b>−</b> Logistics
+                  &amp; mandi fee:{' '}
+                  {money(
+                    (activeDeal?.price || 2700) - (activeDeal?.net || 2520)
+                  )}{' '}
+                  <b>=</b> Net: {money(activeDeal?.net || 2520)}
+                </p>
+              </div>
             </div>
-            <ul>
-              <li>✓ High current demand</li>
-              <li>✓ Verified buyer</li>
-              <li>✓ Pickup available</li>
-            </ul>
-            <button className="primary" onClick={() => n('/recommendation')}>
-              View recommendation →
-            </button>
+            <div className="advisor-tags">
+              <span>
+                <Check size={13} /> High Current Demand
+              </span>
+              <span>
+                <Check size={13} /> Verified Institutional Buyer
+              </span>
+              <span>
+                <Check size={13} /> Farmgate Pickup Included
+              </span>
+            </div>
+            <div className="advisor-actions">
+              <button
+                className="advisor-primary"
+                type="button"
+                onClick={() => navigate('/recommendation')}
+              >
+                Accept Deal &amp; Lock Price <ArrowRight size={16} />
+              </button>
+              <button
+                className="advisor-secondary"
+                type="button"
+                onClick={() => navigate('/market')}
+              >
+                Compare Other APMCs
+              </button>
+            </div>
           </article>
+
           <MarketPulseCard
             market={onionMarket}
             loading={marketLoading}
-            chartData={CHART_HISTORY.Onion}
+            range={chartRange}
+            setRange={setChartRange}
+            data={chartData}
           />
         </div>
-        <div className="stack">
-          <article className="card">
-            <div className="card-title">
+
+        <aside className="dashboard-side-column">
+          <article className="activity-card">
+            <div className="dashboard-card-heading">
               <div>
-                <small>RECENT ACTIVITY</small>
+                <span>Farm activity</span>
                 <h2>Stay on top of your farm</h2>
               </div>
+              <FileCheck2 size={19} />
             </div>
-            {notifications.length === 0 ? (
-              <p style={{ opacity: 0.6 }}>No recent activity.</p>
-            ) : (
-              notifications.map((x) => (
-                <div className="activity" key={x._id}>
-                  <i>✦</i>
-                  <span>
-                    <strong>{x.title}</strong>
-                    <small>
-                      {x.text} · {x.time}
-                    </small>
-                  </span>
+            <div className="activity-feed">
+              {(stats?.notifications || []).slice(0, 3).map((notification) => (
+                <div className="dashboard-activity" key={notification._id}>
+                  <i />
+                  <div>
+                    <strong>{notification.title}</strong>
+                    <p>{notification.text}</p>
+                    <small>{notification.time}</small>
+                  </div>
                 </div>
-              ))
-            )}
+              ))}
+              {!stats?.notifications?.length && (
+                <p className="dashboard-empty">
+                  Your mandi updates will appear here.
+                </p>
+              )}
+            </div>
           </article>
           {featuredCrop && (
-            <article className="card">
-              <div className="card-title">
+            <article className="harvest-card">
+              <div className="dashboard-card-heading">
                 <div>
-                  <small>CURRENT HARVEST</small>
-                  <h2>Ready for market</h2>
+                  <span>Ready for market</span>
+                  <h2>
+                    {featuredCrop.name} — {featuredCrop.quality}
+                  </h2>
                 </div>
-                <b>{featuredCrop.emoji}</b>
+                <span className="harvest-emoji">{featuredCrop.emoji}</span>
               </div>
-              <div className="crop-mini">
-                <span>
-                  <strong>{featuredCrop.name}</strong>
-                  <small>
-                    {featuredCrop.quality} · {featuredCrop.status}
-                  </small>
-                </span>
-                <strong>
-                  {featuredCrop.quantity}
-                  <i> quintals</i>
-                </strong>
+              <div className="harvest-stock">
+                <PackageCheck size={17} />
+                <strong>{featuredCrop.quantity} Quintals Ready</strong>
               </div>
               <button
-                className="text"
-                onClick={() => n(`/buyers?crop=${featuredCrop._id}`)}
+                type="button"
+                onClick={() => navigate(`/buyers?crop=${featuredCrop._id}`)}
               >
-                Find matching buyers →
+                Find Matching Buyers <ArrowRight size={15} />
               </button>
             </article>
           )}
-        </div>
+        </aside>
       </section>
-    </>
+    </div>
   );
 }
 
-function MarketPulseCard({ market, loading, chartData }) {
+function MarketPulseCard({ market, loading, range, setRange, data }) {
   return (
-    <article className="card">
-      <div className="card-title">
+    <article className="market-pulse-card">
+      <div className="dashboard-card-heading">
         <div>
-          <small>MARKET PULSE</small>
-          <h2>Onion price trend</h2>
+          <span>Market pulse</span>
+          <h2>
+            Onion Price Trend <small>(Nashik APMC)</small>
+          </h2>
         </div>
-        <Link className="text" to="/market">
-          View market →
+        <Link className="market-detail-link" to="/market">
+          Open market <ArrowRight size={14} />
         </Link>
       </div>
       {loading ? (
-        <p style={{ opacity: 0.6 }}>Loading market data…</p>
+        <p className="dashboard-empty">Loading market prices…</p>
       ) : market ? (
         <>
-          <div className="price">
-            <strong>{money(market.average)}</strong>
-            <span>
-              {market.change > 0 ? '↑' : '↓'} {Math.abs(market.change)}% vs.
-              last week
-            </span>
+          <div className="pulse-price">
+            <strong>
+              {money(market.average)} <small>/ qtl</small>
+            </strong>
+            <span>+{market.change}% vs last week</span>
           </div>
-          <PriceChart data={chartData} />
+          <div className="chart-range-toggle">
+            {['7 Days', '15 Days', '1 Month', 'Season View'].map((item) => (
+              <button
+                className={range === item ? 'active' : ''}
+                type="button"
+                key={item}
+                onClick={() => setRange(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="dashboard-chart">
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart
+                data={data}
+                margin={{ top: 18, right: 8, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="dashboardGreenFill"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#4B6043" stopOpacity={0.32} />
+                    <stop
+                      offset="100%"
+                      stopColor="#4B6043"
+                      stopOpacity={0.02}
+                    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  stroke="#e7e2d4"
+                  strokeDasharray="4 5"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#8a8d7b', fontSize: 10 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#8a8d7b', fontSize: 10 }}
+                  tickFormatter={(value) => `₹${Math.round(value / 1000)}k`}
+                  width={42}
+                />
+                <Tooltip
+                  cursor={{ stroke: '#c99a3b', strokeDasharray: '3 3' }}
+                  contentStyle={{
+                    border: 0,
+                    borderRadius: 10,
+                    boxShadow: '0 10px 24px #2a231822',
+                  }}
+                  formatter={(value) => [money(value), 'Price']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="price"
+                  stroke="#4B6043"
+                  strokeWidth={3}
+                  fill="url(#dashboardGreenFill)"
+                  dot={{
+                    r: 3,
+                    fill: '#C99A3B',
+                    strokeWidth: 2,
+                    stroke: '#fff',
+                  }}
+                  activeDot={{
+                    r: 6,
+                    fill: '#C99A3B',
+                    stroke: '#fff',
+                    strokeWidth: 3,
+                  }}
+                  isAnimationActive
+                  animationDuration={1100}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </>
       ) : (
-        <p style={{ opacity: 0.6 }}>Market data unavailable.</p>
+        <p className="dashboard-empty">Market data unavailable.</p>
       )}
     </article>
   );

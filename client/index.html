@@ -2,11 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>haatlink</title>
+    <meta name="theme-color" content="#1F3323" />
+    <meta name="description" content="HaatLink: transparent mandi prices and direct buyer matching for Indian growers." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Montserrat', 'sans-serif'],
+              montserrat: ['Montserrat', 'sans-serif'],
+            },
+            colors: {
+              forest: {
+                950: '#0a140d',
+                900: '#142519',
+                800: '#1F3926',
+                700: '#2a4d33',
+              },
+              agriGold: '#E8D9B5',
+              sandBorder: '#E2DBD0',
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <title>HaatLink | The Mandi, Made Clear</title>
   </head>
-  <body>
+  <body class="font-sans antialiased text-[#2a2318] bg-[#f8f5ee]">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

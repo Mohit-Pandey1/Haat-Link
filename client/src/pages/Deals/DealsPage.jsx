@@ -16,7 +16,7 @@ export function DealsPage() {
 
   return (
     <>
-      <PageTitle kicker="DEAL TRACKING" title="My Deals" />
+      <PageTitle title="My Deals" />
 
       {dealsLoading && <p className="intro">Loading deals…</p>}
 

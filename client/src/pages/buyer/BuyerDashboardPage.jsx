@@ -47,11 +47,11 @@ export function BuyerDashboardPage() {
             <article className="card">
               <div className="card-title">
                 <div>
-                  <small>ACTIVE REQUIREMENTS</small>
+                  <small>Open requirements</small>
                   <h2>Procurement progress</h2>
                 </div>
                 <Link className="text" to="/buyer/requirements">
-                  Manage →
+                  Manage
                 </Link>
               </div>
               {requirements.length === 0 ? (
@@ -78,7 +78,7 @@ export function BuyerDashboardPage() {
               )}
             </article>
             <article className="card">
-              <small>TOP RECOMMENDATION</small>
+              <small>Top recommendation</small>
               <h2>Nashik FPO</h2>
               <p>100 quintals · Grade A Onion</p>
               <strong className="big">96% match</strong>

@@ -24,7 +24,19 @@ const app = express();
 // ── Middleware ────────────────────────────────────────────────
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+    origin(origin, callback) {
+      const allowedOrigin = process.env.CLIENT_ORIGIN;
+      const localOrigin =
+        !origin ||
+        /^https?:\/\/(localhost|127\.0\.0\.1):(5173|5174)$/.test(origin);
+
+      if (!allowedOrigin || origin === allowedOrigin || localOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('Origin is not allowed by CORS.'));
+    },
     credentials: true,
   })
 );
@@ -39,6 +51,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/crops', cropRoutes);
 app.use('/api/buyers', buyerRoutes);
 app.use('/api/markets', marketRoutes);
+app.use('/api/v1/market', marketRoutes);
 app.use('/api/requirements', requirementRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/dashboard', dashboardRoutes);

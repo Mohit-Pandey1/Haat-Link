@@ -12,6 +12,7 @@ export function RecommendationPage() {
   const n = useNavigate();
 
   const crop = crops.find((c) => c._id === selectedCrop) || crops[0];
+  const cropName = crop?.name;
 
   const [buyers, setBuyers] = useState([]);
   const [buyersLoading, setBuyersLoading] = useState(true);
@@ -21,14 +22,14 @@ export function RecommendationPage() {
   const [createError, setCreateError] = useState(null);
 
   useEffect(() => {
-    if (!crop) return;
+    if (!cropName) return;
     setBuyersLoading(true);
     setBuyersError(null);
-    getBuyers(crop.name)
+    getBuyers(cropName)
       .then((data) => setBuyers(data))
       .catch((err) => setBuyersError(err.message))
       .finally(() => setBuyersLoading(false));
-  }, [crop?.name]);
+  }, [cropName]);
 
   const ranked = rankedBuyers(crop, buyers);
   const best = ranked[0];
@@ -36,10 +37,7 @@ export function RecommendationPage() {
   if (!crop || buyersLoading) {
     return (
       <>
-        <PageTitle
-          kicker="TRANSPARENT SMART MATCHING"
-          title="Smart selling recommendation"
-        />
+        <PageTitle title="Smart selling recommendation" />
         <p className="intro">{!crop ? 'No crops found.' : 'Loading…'}</p>
       </>
     );
@@ -48,10 +46,7 @@ export function RecommendationPage() {
   if (buyersError) {
     return (
       <>
-        <PageTitle
-          kicker="TRANSPARENT SMART MATCHING"
-          title="Smart selling recommendation"
-        />
+        <PageTitle title="Smart selling recommendation" />
         <p className="intro" style={{ color: 'var(--danger, #e53e3e)' }}>
           Failed to load buyers: {buyersError}
         </p>
@@ -62,16 +57,13 @@ export function RecommendationPage() {
   if (!best) {
     return (
       <>
-        <PageTitle
-          kicker="TRANSPARENT SMART MATCHING"
-          title="Smart selling recommendation"
-        />
+        <PageTitle title="Smart selling recommendation" />
         <article className="card empty-state">
           <span>⌁</span>
-          <h2>No matching buyers for {crop.name} yet</h2>
+          <h2>No buyer has called for {crop.name} yet</h2>
           <p>
-            HaatLink does not have a compatible buyer requirement for this crop
-            in the current marketplace.
+            Check the buyer board for nearby requirements, then return here when
+            someone is ready for your harvest.
           </p>
           <Link className="primary" to="/buyers">
             View buyers
@@ -106,10 +98,7 @@ export function RecommendationPage() {
 
   return (
     <>
-      <PageTitle
-        kicker="TRANSPARENT SMART MATCHING"
-        title="Smart selling recommendation"
-      />
+      <PageTitle title="Smart selling recommendation" />
       <section className="recommendation-page">
         <article className="card recommendation-hero">
           <div>
@@ -145,7 +134,7 @@ export function RecommendationPage() {
               </strong>
             </div>
             <button className="primary" onClick={() => setConfirm(true)}>
-              Create deal →
+              Create deal
             </button>
           </article>
           <article className="card">
@@ -168,7 +157,7 @@ export function RecommendationPage() {
         <article className="card">
           <div className="card-title">
             <div>
-              <small>ALTERNATIVE BUYERS</small>
+              <small>Other buyers</small>
               <h2>How other options compare</h2>
             </div>
           </div>

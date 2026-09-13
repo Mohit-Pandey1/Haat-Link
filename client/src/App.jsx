@@ -26,7 +26,7 @@ function ProtectedRoute({ children }) {
           placeItems: 'center',
           minHeight: '100vh',
           color: '#18362e',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Work Sans, sans-serif',
           background: '#fcfcf8',
         }}
       >
