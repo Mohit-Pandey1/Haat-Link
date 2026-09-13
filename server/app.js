@@ -14,6 +14,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import marketPriceRoutes from './routes/marketPriceRoutes.js';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/market-prices', marketPriceRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────
 app.use((req, res) => {
